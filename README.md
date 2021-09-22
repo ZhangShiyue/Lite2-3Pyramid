@@ -58,6 +58,7 @@ we suggest using TAC08-finetuned model (i.e., shiyue/roberta-large-tac08) by def
 * migrate to pypi package
 * pyrxsum data
 * reproduction code for the paper
+* provide support through [sacrerouge](https://github.com/danieldeutsch/sacrerouge)
 
 
 
