@@ -54,6 +54,12 @@ we suggest using TAC08-finetuned model (i.e., shiyue/roberta-large-tac08) by def
 |  PyrXSum  | shiyue/roberta-large-pyrxsum |
 
 
+### Todos
+* migrate to pypi package
+* pyrxsum data
+* reproduction code for the paper
+
+
 
 
 
