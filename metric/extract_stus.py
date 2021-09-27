@@ -4,26 +4,17 @@ from nltk import sent_tokenize
 from allennlp.predictors.predictor import Predictor
 
 
-def get_reference_corefs():
+def _get_and_replace_coref(references, doc_ids):
+    # get coreference for every summary
     predictor = Predictor.from_path(
         "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2021.03.10.tar.gz")
-    with open("references.txt", 'r') as f:
-        references = f.readlines()
-    with open("ids.txt", 'r') as f:
-        dids = f.readlines()
-
     all_corefs = {}
-    for i, did in enumerate(tqdm(dids)):
+    for i, doc_id in enumerate(tqdm(doc_ids)):
         summary = references[i].replace('<t>', ' ').replace('</t>', ' ').strip()
         coref = predictor.predict(document=summary)
-        all_corefs[did] = coref
-    with open("ref_corefs.pkl", 'wb') as f:
-        pkl.dump(all_corefs, f)
+        all_corefs[doc_id] = coref
 
-
-def replace_coref():
-    with open("ref_corefs.pkl", 'rb') as f:
-        all_corefs = pkl.load(f)
+    # replace the coreference with the actual entity name
     ref_corefs_replaced = {}
     for did in all_corefs:
         words = all_corefs[did]["document"]
@@ -33,7 +24,7 @@ def replace_coref():
         for cluster in clusters:
             pronouns, others = [], []
             for s, e in cluster:
-                span = ' '.join(words[s:e+1]).strip()
+                span = ' '.join(words[s:e + 1]).strip()
                 if span.lower() in ["it", "he", "she", "they", "this", "i", "you", "her", "him",
                                     "their", "them", "his", "its", "my", "your"]:
                     pronouns.append([s, e])
@@ -45,7 +36,7 @@ def replace_coref():
                 for s, e, other in others[1:]:
                     other_words = set(other.lower().split(' '))
                     replacement_words = set(replacement.lower().split(' '))
-                    if other.lower() != replacement.lower() and other.lower() not in unique_others\
+                    if other.lower() != replacement.lower() and other.lower() not in unique_others \
                             and other.lower().find(replacement.lower()) == -1 \
                             and len(other_words & replacement_words) / len(other_words) < 0.5:
                         scus.append(f"{replacement} is {other}")
@@ -66,32 +57,13 @@ def replace_coref():
                     i += 1
             words = new_words
         ref_corefs_replaced[did] = [' '.join(words), scus]
-    with open("ref_corefs_replaced.pkl", 'wb') as f:
-        pkl.dump(ref_corefs_replaced, f)
-
-
-def get_reference_srls_coref():
-    predictor = Predictor.from_path("https://storage.googleapis.com/allennlp-public-models/structured-prediction-srl-bert.2020.12.15.tar.gz")
-
-    with open("ref_corefs_replaced.pkl", 'rb') as f:
-        data = pkl.load(f)
-
-    all_srls = {}
-    for did in tqdm(data):
-        summary, _ = data[did]
-        summary_sents = sent_tokenize(summary.strip())
-        srls = []
-        for sent in summary_sents:
-            sent = sent.strip()
-            if sent:
-                srl = predictor.predict(sentence=sent)
-                srls.append(srl)
-        all_srls[did] = srls
-    with open("ref_corefs_replaced_srls.pkl", 'wb') as f:
-        pkl.dump(all_srls, f)
+    return ref_corefs_replaced
 
 
 def _get_srl_list(sents):
+    """
+    SRL frames to STUs
+    """
     all_srl_list = []
     for sent in sents:
         srl_list = []
@@ -143,26 +115,64 @@ def _get_srl_list(sents):
     return all_srl_list
 
 
-def get_stus():
-    with open("ref_corefs_replaced.pkl", 'rb') as f:
-        ref_corefs = pkl.load(f)
-    with open("ref_corefs_replaced_srls.pkl", 'rb') as f:
-        ref_srls = pkl.load(f)
+def extract_stus(
+    references,
+    doc_ids=None,
+    output_dir=None,
+    use_coref=False,
+):
+    if doc_ids == None:
+        doc_ids = [i for i in range(len(references))]
 
-    with open("ids.txt", 'r') as f:
-        dids = f.readlines()
+    # apply coreference resolution
+    if use_coref:
+        ref_corefs = _get_and_replace_coref(references, doc_ids)
+        if output_dir:
+            print(f"===Save coreference outputs to {output_dir}/ref_corefs.pkl===")
+            with open(f"{output_dir}/ref_corefs.pkl", 'wb') as f:
+                pkl.dump(ref_corefs, f)
+        references = [ref_corefs[doc_id][0] for doc_id in doc_ids]
 
-    res = []
-    for did in dids:
-        stus = _get_srl_list(ref_srls[did]) + ref_corefs[did][1]
-        res.append('\t'.join(stus))
+    # get SRL results
+    predictor = Predictor.from_path(
+        "https://storage.googleapis.com/allennlp-public-models/structured-prediction-srl-bert.2020.12.15.tar.gz")
+    ref_srls = {}
+    for doc_id, reference in tqdm(zip(doc_ids, references)):
+        summary_sents = sent_tokenize(reference.strip())
+        srls = []
+        for sent in summary_sents:
+            sent = sent.strip()
+            if sent:
+                srl = predictor.predict(sentence=sent)
+                srls.append(srl)
+        ref_srls[doc_id] = srls
+    if output_dir:
+        print(f"===Save SRL outputs to {output_dir}/ref_srls.pkl===")
+        with open(f"{output_dir}/ref_srls.pkl", 'wb') as f:
+            pkl.dump(ref_srls, f)
 
-    with open("STUs.txt", 'w') as f:
-        f.write('\n'.join(res))
+    all_stus = []
+    count = 0
+    for doc_id in doc_ids:
+        stus = _get_srl_list(ref_srls[doc_id])
+        if use_coref:
+            stus.extend(ref_corefs[doc_id][1])
+        count += len(stus)
+        all_stus.append(stus)
+
+    print(f"==={len(all_stus)} references, on average {count / len(all_stus)} STUs per reference===")
+
+    if output_dir:
+        print(f"===Save STUs to {output_dir}/STUs.txt===")
+        with open(f"{output_dir}/STUs.txt", 'w') as f:
+            f.write('\n'.join(['\t'.join(stus) for stus in all_stus]))
+
+    return all_stus
 
 
 if __name__ == '__main__':
-    get_reference_corefs()
-    replace_coref()
-    get_reference_srls_coref()
-    get_stus()
+    with open("../data/REALSumm/references.txt", 'r') as f:
+        references = [line.strip() for line in f.readlines()]
+    with open("../data/REALSumm/ids.txt", 'r') as f:
+        ids = [line.strip() for line in f.readlines()]
+    extract_stus(references, ids, output_dir="../data/REALSumm/", use_coref=True)

@@ -39,6 +39,14 @@ Usually, "p2c" should be token as the final score.
 When using the zero-shot NLI model (i.e., ynie/roberta-large-snli_mnli_fever_anli_R1_R2_R3-nli), 
 "l3c" should be used. 
 
+To extract STUs:
+```
+python Lite2-3Pyramid.py --extract_stus --reference data/REALSumm/references.txt --doc_id data/REALSumm/ids.txt --output_dir data/REALSumm --use_coref
+```
+Then, the extracted STUs for REALSumm references will be saved in "data/REALSumm/STUs.txt". 
+Besides, two intermediate files (ref_srls.pkl and ref_corefs.pkl) will also be saved under "data/REALSumm".
+
+
 ### Pretrained NLI Models
 We provide the zero-shot NLI model and 4 other NLI models 
 finetuned on the 4 meta-evaluation sets respectively. 
