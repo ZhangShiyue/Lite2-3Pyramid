@@ -1,5 +1,7 @@
 import torch
 import argparse
+import json
+import os
 from metric import score, extract_stus
 
 
@@ -27,7 +29,6 @@ def main():
     parser.add_argument("--label", default=None, type=str,
                         help="The file storing gold presence labels of units."
                              "Should be aligned with --unit file.")
-    parser.add_argument("--no_cuda", action="store_true", help="Avoid using CUDA when available")
     parser.add_argument("--detail", action="store_true", help="if output detailed scores for every example")
     parser.add_argument("--extract_stus", action="store_true", help="extract STUs only")
     parser.add_argument("--reference", default=None, type=str,
@@ -38,6 +39,10 @@ def main():
                         help="The output directory to save output files from extracting STUs.")
     parser.add_argument("--use_coref", action="store_true",
                         help="if apply coreference resolution for STU extraction")
+    parser.add_argument("--device", type=int, default=-1,
+                        help="The ID of the GPU to use, -1 if CPU")
+    parser.add_argument("--output_file",
+                        help="The output file to save the scores to")
 
     args = parser.parse_args()
 
@@ -49,13 +54,11 @@ def main():
         if args.doc_id:
             with open(args.doc_id, 'r') as f:
                 doc_ids = [line.strip() for line in f.readlines()]
-        extract_stus(references, doc_ids, output_dir=args.output_dir, use_coref=args.use_coref)
+        extract_stus(references, doc_ids, output_dir=args.output_dir, use_coref=args.use_coref, device=args.device)
     else:
-        device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-        args.device = device
-
         assert args.summary is not None, "need to input the file storing summaries"
         assert args.unit is not None, "need to input the file storing units"
+        assert args.output_file is not None, "need to input the file to save the scores to"
 
         with open(args.summary, 'r') as f:
             summaries = [line.strip() for line in f.readlines()]
@@ -70,11 +73,17 @@ def main():
             with open(args.weight, 'r') as f:
                 weights = [[int(weight) for weight in line.strip().split('\t')] for line in f.readlines()]
 
-        res = score(summaries, units, weights=weights, labels=labels, device=device,
+        res = score(summaries, units, weights=weights, labels=labels, device=args.device,
                     model_type=args.model, data=args.data, batch_size=args.batch_size,
                     max_length=args.max_length, cache_dir=args.cache_dir, detail=args.detail)
 
         print(res)
+
+        dirname = os.path.dirname(args.output_file)
+        if dirname:
+            os.makedirs(dirname, exist_ok=True)
+        with open(args.output_file, "w") as out:
+            out.write(json.dumps(res))
 
 
 if __name__ == '__main__':
