@@ -58,7 +58,6 @@ def main():
     else:
         assert args.summary is not None, "need to input the file storing summaries"
         assert args.unit is not None, "need to input the file storing units"
-        assert args.output_file is not None, "need to input the file to save the scores to"
 
         with open(args.summary, 'r') as f:
             summaries = [line.strip() for line in f.readlines()]
@@ -79,11 +78,12 @@ def main():
 
         print(res)
 
-        dirname = os.path.dirname(args.output_file)
-        if dirname:
-            os.makedirs(dirname, exist_ok=True)
-        with open(args.output_file, "w") as out:
-            out.write(json.dumps(res))
+        if args.output_file is not None:
+            dirname = os.path.dirname(args.output_file)
+            if dirname:
+                os.makedirs(dirname, exist_ok=True)
+            with open(args.output_file, "w") as out:
+                out.write(json.dumps(res))
 
 
 if __name__ == '__main__':
