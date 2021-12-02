@@ -82,7 +82,7 @@ def _get_srl_list(sents):
                         v_words.append(word)
                         prev_v_word = prev_word
                     elif not prev:
-                        if position == "B":
+                        if len(tag_dict) == 0 or tag_dict[-1][0] != tag:
                             tag_dict.append([tag, []])
                         tag_dict[-1][1].append(word)
                     else:
