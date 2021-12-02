@@ -4,10 +4,12 @@ from nltk import sent_tokenize
 from allennlp.predictors.predictor import Predictor
 
 
-def _get_and_replace_coref(references, doc_ids):
+def _get_and_replace_coref(references, doc_ids, device):
     # get coreference for every summary
     predictor = Predictor.from_path(
-        "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2021.03.10.tar.gz")
+        "https://storage.googleapis.com/allennlp-public-models/coref-spanbert-large-2021.03.10.tar.gz",
+        cuda_device=device
+    )
     all_corefs = {}
     for i, doc_id in enumerate(tqdm(doc_ids)):
         summary = references[i].replace('<t>', ' ').replace('</t>', ' ').strip()
@@ -120,13 +122,14 @@ def extract_stus(
     doc_ids=None,
     output_dir=None,
     use_coref=False,
+    device=-1
 ):
     if doc_ids == None:
         doc_ids = [i for i in range(len(references))]
 
     # apply coreference resolution
     if use_coref:
-        ref_corefs = _get_and_replace_coref(references, doc_ids)
+        ref_corefs = _get_and_replace_coref(references, doc_ids, device)
         if output_dir:
             print(f"===Save coreference outputs to {output_dir}/ref_corefs.pkl===")
             with open(f"{output_dir}/ref_corefs.pkl", 'wb') as f:
@@ -135,7 +138,9 @@ def extract_stus(
 
     # get SRL results
     predictor = Predictor.from_path(
-        "https://storage.googleapis.com/allennlp-public-models/structured-prediction-srl-bert.2020.12.15.tar.gz")
+        "https://storage.googleapis.com/allennlp-public-models/structured-prediction-srl-bert.2020.12.15.tar.gz",
+        cuda_device=device
+    )
     ref_srls = {}
     for doc_id, reference in tqdm(zip(doc_ids, references)):
         summary_sents = sent_tokenize(reference.strip())

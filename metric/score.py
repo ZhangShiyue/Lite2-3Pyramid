@@ -15,7 +15,7 @@ def score(
     model_type=None,
     max_length=400,
     batch_size=32,
-    device=None,
+    device=-1,
     cache_dir=None,
     detail=False,
 ):
@@ -26,8 +26,8 @@ def score(
 
     if model_type is None:
         model_type = data2model[data]
-    if device is None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    device = "cpu" if device == -1 else f"cuda:{device}"
 
     model = AutoModelForSequenceClassification.from_pretrained(model_type, cache_dir=cache_dir).to(device)
     tokenizer = AutoTokenizer.from_pretrained(model_type)
