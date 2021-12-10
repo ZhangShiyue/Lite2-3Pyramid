@@ -1,6 +1,8 @@
+import numpy as np
 import pickle as pkl
+import xgboost as xgb
 from tqdm import tqdm
-from nltk import sent_tokenize
+from nltk import sent_tokenize, word_tokenize
 from allennlp.predictors.predictor import Predictor
 
 
@@ -117,16 +119,13 @@ def _get_srl_list(sents):
     return all_srl_list
 
 
-def extract_stus(
+def _run_srl(
     references,
     doc_ids=None,
     output_dir=None,
     use_coref=False,
-    device=-1
+    device=-1,
 ):
-    if doc_ids == None:
-        doc_ids = [i for i in range(len(references))]
-
     # apply coreference resolution
     if use_coref:
         ref_corefs = _get_and_replace_coref(references, doc_ids, device)
@@ -139,8 +138,8 @@ def extract_stus(
     # get SRL results
     predictor = Predictor.from_path(
         "https://storage.googleapis.com/allennlp-public-models/structured-prediction-srl-bert.2020.12.15.tar.gz",
-        cuda_device=device
-    )
+        cuda_device=device)
+
     ref_srls = {}
     for doc_id, reference in tqdm(zip(doc_ids, references)):
         summary_sents = sent_tokenize(reference.strip())
@@ -156,12 +155,27 @@ def extract_stus(
         with open(f"{output_dir}/ref_srls.pkl", 'wb') as f:
             pkl.dump(ref_srls, f)
 
+    return (ref_srls, ref_corefs) if use_coref else (ref_srls,)
+
+
+def extract_stus(
+    references,
+    doc_ids=None,
+    output_dir=None,
+    use_coref=False,
+    device=-1
+):
+    if doc_ids == None:
+        doc_ids = [i for i in range(len(references))]
+
+    res = _run_srl(references, doc_ids, output_dir=output_dir, use_coref=use_coref, device=device)
+
     all_stus = []
     count = 0
     for doc_id in doc_ids:
-        stus = _get_srl_list(ref_srls[doc_id])
+        stus = _get_srl_list(res[0][doc_id])
         if use_coref:
-            stus.extend(ref_corefs[doc_id][1])
+            stus.extend(res[1][doc_id][1])
         count += len(stus)
         all_stus.append(stus)
 
@@ -175,9 +189,179 @@ def extract_stus(
     return all_stus
 
 
+non_terminal_tokens = ['WRB', 'RBR', 'ADVP', 'VBG', '$', "''", 'WHADVP', '-RRB-', 'JJR', 'NAC', 'PRP', 'NNS', 'WP',
+                           'VBZ', 'MD', 'WDT', 'NP', 'ADJP', 'PDT', 'EX', 'UH', 'NN', 'NFP', 'SYM', 'PRP$', 'RBS',
+                           'FRAG', 'NX', 'CONJP', 'RP', 'WHPP', 'CC', 'VBD', 'LS', '.', 'SBAR', 'TO', 'JJ', 'IN', 'VP',
+                           '-LRB-', 'S', 'QP', 'SQ', 'CD', '``', 'X', 'POS', 'XX', 'PP', 'PRT', 'JJS', 'HYPH', ',',
+                           'RB', 'VBN', ':', 'VBP', 'DT', 'VB', 'SINV', 'UCP', 'WHNP', 'NNPS', 'NNP']
+
+
+def _get_features(tokens, tree):
+    """
+    prepare the feature vector for each reference sentence
+    """
+    length = len(tokens)
+    tree_length = len(tree)
+    non_terminal = [0] * len(non_terminal_tokens)
+    left, right, depth = 0, 0, 0
+    prec = None
+    token = ""
+    for c in tree:
+        if c == " " and token:
+            if token in non_terminal_tokens:
+                non_terminal[non_terminal_tokens.index(token)] += 1
+            prec, token = None, ""
+            continue
+        if prec == "(":
+            token += c
+        else:
+            prec = c
+        if c == "(":
+            left += 1
+        elif c == ")":
+            right += 1
+        depth = max(depth, left - right)
+    feature = [length, tree_length, depth, length / depth] + non_terminal
+    return feature
+
+
+def mix_scus_stus(
+    regressor,
+    scus,
+    percentage,
+    references=None,
+    ref_srls_pkl=None,
+    ref_corefs=None,
+    doc_ids=None,
+    output_dir=None,
+    use_coref=False,
+    device=-1
+):
+    assert references is not None or ref_srls_pkl is not None, \
+        "need to provide either references or the address of ref_srls.pkl"
+
+    if doc_ids == None:
+        doc_ids = [i for i in range(len(scus))]
+
+    if ref_srls_pkl:
+        with open(ref_srls_pkl, 'rb') as f:
+            ref_srls = pkl.load(f)
+        if use_coref:
+            with open(ref_corefs, 'rb') as f:
+                ref_corefs = pkl.load(f)
+    else:
+        res = _run_srl(references, doc_ids, output_dir=output_dir, use_coref=use_coref)
+        ref_srls = res[0]
+        if use_coref: ref_corefs = res[1]
+
+    print(f"===Get Parsing Trees===")
+    # get parsing trees
+    predictor = Predictor.from_path(
+        "https://storage.googleapis.com/allennlp-public-models/elmo-constituency-parser-2020.02.10.tar.gz",
+        cuda_device=device)
+
+    all_trees, all_scus, all_stus = {}, {}, {}
+    for doc_index, doc_id in enumerate(doc_ids):
+        # get features
+        trees = []
+        for sent in ref_srls[doc_id]:
+            sent = ' '.join(sent["words"])
+            res = predictor.predict(sentence=sent)
+            trees.append([res["tokens"], res["trees"]])
+        all_trees[doc_id] = trees
+
+        # align scus
+        sent_words = [[word.lower() for word in sent["words"]] for sent in ref_srls[doc_id]]
+        scu_sent = {}
+        for scu in scus[doc_index]:
+            max_sent, max_overlap = 0, 0
+            scu_word = word_tokenize(scu.lower().replace(',', ' ').replace('.', ' '))
+            for i, sent_word in enumerate(sent_words):
+                overlap = len(set(scu_word) & set(sent_word))
+                if overlap > max_overlap:
+                    max_overlap = overlap
+                    max_sent = i
+            if max_sent not in scu_sent:
+                scu_sent[max_sent] = []
+            scu_sent[max_sent].append(scu)
+        all_scus[doc_id] = scu_sent
+
+        # align stus
+        srl_sent = {}
+        if use_coref:
+            for srl in ref_corefs[doc_id][1]:
+                srl_word = word_tokenize(srl.lower().split("is")[1])
+                max_sent, max_overlap = 0, 0
+                for i, sent_word in enumerate(sent_words):
+                    overlap = len(set(srl_word) & set(sent_word))
+                    if overlap > max_overlap:
+                        max_overlap = overlap
+                        max_sent = i
+                if max_sent not in srl_sent:
+                    srl_sent[max_sent] = []
+                srl_sent[max_sent].append(srl)
+        for i, sent in enumerate(ref_srls[doc_id]):
+            if i not in srl_sent:
+                srl_sent[i] = []
+            srl_sent[i].extend(_get_srl_list([sent]))
+        all_stus[doc_id] = srl_sent
+
+    print(f"===Get Easiness Scores===")
+    # predict easiness scores
+    X, dids, sids = [], [], []
+    for doc_id in doc_ids:
+        for sent_id, (tokens, tree) in enumerate(all_trees[doc_id]):
+            X.append(_get_features(tokens, tree))
+            dids.append(doc_id)
+            sids.append(sent_id)
+    X = xgb.DMatrix(np.array(X))
+    bst = xgb.Booster({'nthread': 4})
+    bst.load_model(regressor)
+    scores = bst.predict(X)
+    easiness_dict = {}
+    easinesses = []
+    for did, sid, score in zip(dids, sids, scores):
+        if did not in easiness_dict:
+            easiness_dict[did] = {}
+        easiness_dict[did][sid] = score
+        easinesses.append(score)
+
+    print(f"===Mix STUs and SCUs===")
+    # predict easiness scores
+    # mix scus and stus
+    easinesses = sorted(easinesses, reverse=True)
+    threshold = easinesses[:int(len(easinesses) * percentage / 100)][-1]
+
+    units = []
+    for doc_id in doc_ids:
+        doc_units = []
+        for sent in easiness_dict[doc_id]:
+            if sent not in all_scus[doc_id]:
+                continue
+            easiness = easiness_dict[doc_id][sent]
+            if easiness > threshold:
+                doc_units.extend(all_stus[doc_id][sent])
+            else:
+                doc_units.extend(all_scus[doc_id][sent])
+        units.append(doc_units)
+
+    if output_dir:
+        print(f"===Save STUs_SCUs_percentage{percentage} to {output_dir}/STUs_SCUs_percentage{percentage}.txt===")
+        with open(f"{output_dir}/STUs_SCUs_percentage{percentage}.txt", 'w') as f:
+            f.write('\n'.join(['\t'.join(us) for us in units]))
+
+    return units
+
+
 if __name__ == '__main__':
-    with open("../data/REALSumm/references.txt", 'r') as f:
-        references = [line.strip() for line in f.readlines()]
+    with open("../data/REALSumm/SCUs.txt", 'r') as f:
+        scus = [line.strip().split('\t') for line in f.readlines()]
     with open("../data/REALSumm/ids.txt", 'r') as f:
         ids = [line.strip() for line in f.readlines()]
-    extract_stus(references, ids, output_dir="../data/REALSumm/", use_coref=True)
+
+    mix_scus_stus(regressor="../regressors/TAC08/all_xgb.json",
+                  scus=scus, percentage=50,
+                  ref_srls_pkl="../data/REALSumm/ref_srls.pkl",
+                  ref_corefs="../data/REALSumm/ref_corefs.pkl",
+                  output_dir="../data/REALSumm",
+                  doc_ids=ids, use_coref=True)

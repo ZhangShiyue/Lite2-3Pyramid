@@ -2,7 +2,7 @@ import torch
 import argparse
 import json
 import os
-from metric import score, extract_stus
+from metric import score, extract_stus, mix_scus_stus
 
 
 def main():
@@ -31,12 +31,22 @@ def main():
                              "Should be aligned with --unit file.")
     parser.add_argument("--detail", action="store_true", help="if output detailed scores for every example")
     parser.add_argument("--extract_stus", action="store_true", help="extract STUs only")
+    parser.add_argument("--mix_stus_and_scus", action="store_true", help="mix STUs and SCUs")
+    parser.add_argument("--stu_percentage", type=int, default=50, help="The percentage of STUs")
     parser.add_argument("--reference", default=None, type=str,
                         help="The file storing references. Each line is one reference.")
     parser.add_argument("--doc_id", default=None, type=str,
                         help="The file storing document ids. Each line is one document id.")
     parser.add_argument("--output_dir", default=None, type=str,
                         help="The output directory to save output files from extracting STUs.")
+    parser.add_argument("--srl_file", default=None, type=str,
+                        help="The intermediate file saving SRL results.")
+    parser.add_argument("--coref_file", default=None, type=str,
+                        help="The intermediate file saving coreference results.")
+    parser.add_argument("--scus_file", default=None, type=str,
+                        help="The file saving SCUs.")
+    parser.add_argument("--regressor", default=None, type=str,
+                        help="The regressor used for mixing STUs and SCUs.")
     parser.add_argument("--use_coref", action="store_true",
                         help="if apply coreference resolution for STU extraction")
     parser.add_argument("--device", type=int, default=-1,
@@ -54,7 +64,27 @@ def main():
         if args.doc_id:
             with open(args.doc_id, 'r') as f:
                 doc_ids = [line.strip() for line in f.readlines()]
-        extract_stus(references, doc_ids, output_dir=args.output_dir, use_coref=args.use_coref, device=args.device)
+        extract_stus(references, doc_ids, output_dir=args.output_dir, use_coref=args.use_coref,
+                     device=args.device)
+    elif args.mix_stus_and_scus:
+        with open(args.scus_file, 'r') as f:
+            scus = [line.strip().split('\t') for line in f.readlines()]
+        doc_ids = None
+        if args.doc_id:
+            with open(args.doc_id, 'r') as f:
+                doc_ids = [line.strip() for line in f.readlines()]
+        if args.srl_file and args.coref_file:
+            mix_scus_stus(args.regressor, scus, args.stu_percentage,
+                          ref_srls_pkl=args.srl_file, ref_corefs=args.coref_file,
+                          doc_ids=doc_ids, output_dir=args.output_dir,
+                          use_coref=args.use_coref, device=args.device)
+        else:
+            assert args.reference is not None, "need to input the file storing references"
+            with open(args.reference, 'r') as f:
+                references = [line.strip() for line in f.readlines()]
+            mix_scus_stus(args.regressor, scus, args.stu_percentage, references=references,
+                          doc_ids=doc_ids, output_dir=args.output_dir,
+                          use_coref=args.use_coref, device=args.device)
     else:
         assert args.summary is not None, "need to input the file storing summaries"
         assert args.unit is not None, "need to input the file storing units"
