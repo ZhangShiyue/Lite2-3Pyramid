@@ -6,7 +6,7 @@ from metric import score, human_score
 from utils import summary_level_correlation, system_level_correlation, get_realsumm_data
 
 
-def realsumm_by_examples(version=2):
+def realsumm_by_examples(version=2, device=-1):
     """
     version=2 expected output:
     ================ System Level =================
@@ -19,6 +19,18 @@ def realsumm_by_examples(version=2):
     p3c 0.6379487042335673 0.5964372547536069
     l2c 0.5686841213142527 0.542580658037932
     p2c 0.6421714799110585 0.6005035335930164
+
+    version=2.5 expected output:
+    ================ System Level =================
+    l3c 0.8294911596118257 0.7876923076923077
+    p3c 0.8684428603781118 0.8172307692307692
+    l2c 0.8635053811630928 0.8318461538461538
+    p2c 0.9003803036017544 0.8859999999999999
+    ================ Summary Level =================
+    l3c 0.5150350085079959 0.4921186195829096
+    p3c 0.6129364373373607 0.5708284376254478
+    l2c 0.5247998339992539 0.50582631573561
+    p2c 0.6156295310098946 0.5715489127292626
 
     version=3 expected output:
     ================ System Level =================
@@ -49,7 +61,8 @@ def realsumm_by_examples(version=2):
         for system_name in system_data:
             summaries, labels = fold_system_data[system_name]
             res = score(summaries, fold_units, labels=labels if version == 2 else None,
-                        model_type=f"shiyue/roberta-large-realsumm-by-examples-fold{fold}", detail=True)
+                        model_type=f"shiyue/roberta-large-realsumm-by-examples-fold{fold}",
+                        detail=True, device=device)
 
             l3c[system_name] = {i: v for i, v in enumerate(res["l3c"][1])}
             p3c[system_name] = {i: v for i, v in enumerate(res["p3c"][1])}
@@ -78,7 +91,7 @@ def realsumm_by_examples(version=2):
         print(metric, np.mean(summary_level[metric]["pear"]), np.mean(summary_level[metric]["spear"]))
 
 
-def realsumm_by_systems(version=2):
+def realsumm_by_systems(version=2, device=-1):
     """
     version=2 expected output:
     ================ System Level =================
@@ -103,6 +116,8 @@ def realsumm_by_systems(version=2):
     p3c 0.4879742684037576 0.4595304316927783
     l2c 0.45217790754278975 0.43911306320979093
     p2c 0.48765488022472103 0.46381178796934996
+
+    TODO summary level results are slightly different from old numbers
     """
     units, system_data = get_realsumm_data(version=version)
 
@@ -117,7 +132,8 @@ def realsumm_by_systems(version=2):
         for system_name in fold_system_data:
             summaries, labels = fold_system_data[system_name]
             res = score(summaries, units, labels=labels if version == 2 else None,
-                        model_type=f"shiyue/roberta-large-realsumm-by-systems-fold{fold}", detail=True)
+                        model_type=f"shiyue/roberta-large-realsumm-by-systems-fold{fold}",
+                        detail=True, device=device)
 
             l3c[system_name] = {i: v for i, v in enumerate(res["l3c"][1])}
             p3c[system_name] = {i: v for i, v in enumerate(res["p3c"][1])}
@@ -152,14 +168,16 @@ if __name__ == '__main__':
                         type=str, help="Data name: choose from [nli, tac08, tac09, realsumm, pyrxsum]")
     parser.add_argument("--split", default="examples",
                         type=str, help="Split by: examples or systems")
-    parser.add_argument("--version", default=2, type=int, help="Lite[version]Pyramid")
+    parser.add_argument("--version", default=2, type=float, help="Lite[version]Pyramid")
+    parser.add_argument("--device", type=int, default=-1,
+                        help="The ID of the GPU to use, -1 if CPU")
 
     args = parser.parse_args()
 
     if args.data == "realsumm":
         if args.split == "examples":
-            realsumm_by_examples(args.version)
+            realsumm_by_examples(args.version, args.device)
         elif args.split == "systems":
-            realsumm_by_systems(args.version)
+            realsumm_by_systems(args.version, args.device)
         else:
             print("invalid split!")
