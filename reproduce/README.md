@@ -1,5 +1,9 @@
 ## Reproduce results in our paper
 
+Note that some numbers are slightly different from the numbers reported in the paper,
+it is probably caused by the precision of float numbers. 
+Our old numbers were with 7 decimal places, but new numbers are with 17 decimal places.
+
 ### 5-fold Cross-Validation
 
 #### REALSumm
@@ -8,11 +12,49 @@
 # Lite2Pyramid
 python cross_validation.py --data realsumm --split examples --version 2 --device 0
 
+expected outout:
+================ System Level =================
+l3c 0.8417933546081342 0.8010769230769231
+p3c 0.8367324204640783 0.7655384615384616
+l2c 0.873318115166315 0.8461538461538461
+p2c 0.88526218266187 0.8573846153846155
+================ Summary Level =================
+l3c 0.5649634208524078 0.5384053984871865
+p3c 0.6379487042335673 0.5964372547536069
+l2c 0.5686841213142527 0.542580658037932
+p2c 0.6421714799110585 0.6005035335930164
+
+
 # Lite2.5Pyramid
 python cross_validation.py --data realsumm --split examples --version 2.5 --device 0
 
+expected outout:
+================ System Level =================
+l3c 0.8294911596118257 0.7876923076923077
+p3c 0.8684428603781118 0.8172307692307692
+l2c 0.8635053811630928 0.8318461538461538
+p2c 0.9003803036017544 0.8859999999999999
+================ Summary Level =================
+l3c 0.5150350085079959 0.4921186195829096
+p3c 0.6129364373373607 0.5708284376254478
+l2c 0.5247998339992539 0.50582631573561
+p2c 0.6156295310098946 0.5715489127292626
+
+
 # Lite3Pyramid
 python cross_validation.py --data realsumm --split examples --version 3 --device 0
+
+expected output:
+================ System Level =================
+l3c 0.8125769965944079 0.7795384615384615
+p3c 0.8841078645351625 0.8683076923076924
+l2c 0.8502911457458968 0.8118461538461539
+p2c 0.8857783322303019 0.8681538461538463
+================ Summary Level =================
+l3c 0.4625040999441442 0.4387146552055542
+p3c 0.5802680664600168 0.5409421497592383
+l2c 0.4796741509889696 0.4585034329414799
+p2c 0.5746644786840002 0.5324422041594156
 ```
 
 * Split by systems
@@ -20,12 +62,81 @@ python cross_validation.py --data realsumm --split examples --version 3 --device
 # Lite2Pyramid
 python cross_validation.py --data realsumm --split systems --version 2 --device 0
 
+expected output:
+================ System Level =================
+l3c 0.7502881735928073 0.6799999999999999
+p3c 0.7514473158330084 0.7
+l2c 0.8136240787614536 0.7799999999999999
+p2c 0.7389623756730259 0.7199999999999999
+================ Summary Level =================
+l3c 0.5099953721863157 0.49821640182533294
+p3c 0.5477781945069251 0.5175346450835481
+l2c 0.5339576668182527 0.5171383697651195
+p2c 0.5529397909320518 0.5206720621937355
+
+
 # Lite2.5Pyramid
 python cross_validation.py --data realsumm --split systems --version 2.5 --device 0
 
+expected output:
+================ System Level =================
+l3c 0.7526905508123004 0.72
+p3c 0.7036700219105395 0.6599999999999999
+l2c 0.7844743068869221 0.7999999999999998
+p2c 0.7134943685054693 0.6799999999999998
+================ Summary Level =================
+l3c 0.47156198043128716 0.4613578164743779
+p3c 0.5220689416374241 0.5009041029696443
+l2c 0.48603450123344044 0.4734740866931433
+p2c 0.5214431881264616 0.5046054109343159
+
+
 # Lite3Pyramid
 python cross_validation.py --data realsumm --split systems --version 3 --device 0
+
+expected output:
+================ System Level =================
+l3c 0.7715564782870926 0.74
+p3c 0.7774456941910397 0.76
+l2c 0.8235133749974825 0.8399999999999999
+p2c 0.7804174278938876 0.7599999999999999
+================ Summary Level =================
+l3c 0.43228962704258034 0.42105945909959974
+p3c 0.4879742684037576 0.4595304316927783
+l2c 0.45217790754278975 0.43911306320979093
+p2c 0.48765488022472103 0.46381178796934996
 ```
 
 ### Out-of-the-box Generalization
 
+#### TAC08 to REALSumm 
+```
+# Lite2Pyramid
+python out_of_the_box.py --source tac08 --target realsumm --version 2 --device 0
+
+expected output:
+l3c system-level: 0.9539143281966703, 0.9592307692307691 summary-level: 0.5946730806152126, 0.5776106445576457
+p3c system-level: 0.9438718409760112, 0.9461538461538461 summary-level: 0.6187930427632147, 0.5777794433683304
+l2c system-level: 0.9462351573552207, 0.9461538461538461 summary-level: 0.5903727218444925, 0.568648999313437
+p2c system-level: 0.9445700764541787, 0.9492307692307692 summary-level: 0.6140539736177868, 0.5722168862483084
+
+
+# Lite2Pyramid
+python out_of_the_box.py --source tac08 --target realsumm --version 2.5 --device 0
+
+expected output:
+l3c system-level: 0.9326628352122763, 0.933076923076923 summary-level: 0.5616728380943417, 0.5488230585885447
+p3c system-level: 0.9283022069059116, 0.9415384615384615 summary-level: 0.5870674317276232, 0.5421313476199596
+l2c system-level: 0.9256522761593354, 0.9323076923076923 summary-level: 0.5533156981697394, 0.5393048527592907
+p2c system-level: 0.9258282043597107, 0.9307692307692308 summary-level: 0.5815443828063045, 0.5402476206504653
+
+
+# Lite3Pyramid
+python out_of_the_box.py --source tac08 --target realsumm --version 3 --device 0
+
+expected output:
+l3c system-level: 0.918356601691532, 0.9353846153846154 summary-level: 0.5154261027077194, 0.5035210440077525
+p3c system-level: 0.9219865686952463, 0.9453846153846153 summary-level: 0.5467621805948232, 0.5159035961763764
+l2c system-level: 0.9121923780545634, 0.9361538461538461 summary-level: 0.5010101910695576, 0.49008072792960305
+p2c system-level: 0.9214039400695158, 0.9353846153846154 summary-level: 0.5365399144514678, 0.5029517361250492
+```
