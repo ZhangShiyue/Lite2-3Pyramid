@@ -6,14 +6,21 @@ from metric import score, human_score
 from utils import summary_level_correlation, system_level_correlation, get_realsumm_data
 
 
-def tac08_to_realsumm(version=2, device=-1):
+def x_to_realsumm(source, version=2, device=-1):
+    if source == "tac08":
+        model = "shiyue/roberta-large-tac08"
+    elif source == "tac08-tac09":
+        model = "shiyue/roberta-large-tac08-tac09"
+    else:
+        print('Wrong Source! Choose from [tac08, tac08-tac09]')
+        exit()
     units, system_data = get_realsumm_data(version=version)
 
     l3c, p3c, l2c, p2c, human = {}, {}, {}, {}, {}
     for system_name in system_data:
         summaries, labels = system_data[system_name]
         res = score(summaries, units, labels=labels if version == 2 else None,
-                    detail=True, device=device)
+                    model_type=model, detail=True, device=device)
 
         l3c[system_name] = {i: v for i, v in enumerate(res["l3c"][1])}
         p3c[system_name] = {i: v for i, v in enumerate(res["p3c"][1])}
@@ -31,7 +38,7 @@ def tac08_to_realsumm(version=2, device=-1):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", default="tac08",
-                        type=str, help="Source data name: choose from [tac08, tac08+tac09, tac08+tac09+realsumm]")
+                        type=str, help="Source data name: choose from [tac08, tac08-tac09, tac08-tac09-realsumm]")
     parser.add_argument("--target", default="realsumm",
                         type=str, help="Target data name: choose from [tac09, realsumm, pyrxsum]")
     parser.add_argument("--version", default=2, type=float, help="Lite[version]Pyramid")
@@ -40,5 +47,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.source == "tac08" and args.target == "realsumm":
-        tac08_to_realsumm(version=args.version, device=args.device)
+    if args.target == "realsumm":
+        x_to_realsumm(source=args.source, version=args.version, device=args.device)
