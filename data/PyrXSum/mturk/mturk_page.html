@@ -1,0 +1,110 @@
+<meta content="width=device-width,initial-scale=1" name="viewport" />
+<section class="container" id="Sentiment"><!-- Instructions (collapsible) -->
+<div class="row">
+<div class="col-xs-12 col-md-12">
+<div class="panel panel-primary"><!-- WARNING: the ids "collapseTrigger" and "instructionBody" are being used to enable expand/collapse feature --><a class="panel-heading" href="javascript:void(0);" id="collapseTrigger"><strong>Instructions</strong><span class="collapse-text">&nbsp;(Please read carefully to ensure that your work gets approved as quickly as possible!)</span></a>
+<div class="panel-body" id="instructionBody">
+<p style="font-size: 14px; text-size-adjust: auto;"><span style="font-weight: 700;">Welcome!</span></p>
+
+<p style="font-size: 14px; text-size-adjust: auto;">We need your help in judging whether some facts are present or not present in a short summary.	</p>
+
+    <p style="font-size: 14px; text-size-adjust: auto;">For each assignment, you will be prompted with <span style="font-weight: 700;">a short summary</span>
+        of a news article and <span style="font-weight: 700;">a list of important facts</span> that are supposed to appear in the summary, each is a short sentence.
+    <br><br>
+        Your task is to judge whether each of these facts is <i>semantically</i> <strong>Present</strong> or <strong>Not Present</strong> in the summary.
+    <br><br>
+        Importantly, <strong>Present</strong> means that <strong>the meaning</strong> of the fact is fully covered by the summary,
+        while <strong>the exact expression/wording can be different</strong>.
+     <br><br>
+    An example: <br>
+
+    <p class="well">
+        <strong>Summary:</strong> <br>
+        bayern munich beat porto 6 - 1 at the allianz arena on tuesday night. <br><br>
+        <strong>Facts:</strong> <br>
+        1 Bayern Munich beat Porto.   &nbsp;&nbsp;&nbsp;&nbsp; <i>Present</i> <br>
+        2 Bayern Munich won 6 - 1.  &nbsp;&nbsp;&nbsp;&nbsp;   <i>Present</i> <br>
+        3 Bayern Munich won in Champions League. &nbsp;&nbsp;&nbsp;&nbsp; <i>Not Present</i> <br>
+        4 Porto lost the game. &nbsp;&nbsp;&nbsp;&nbsp; <i>Present</i> <br>
+    </p>
+
+</div>
+</div>
+</div>
+</div>
+
+<div class="row" id="workContent">
+
+<div style="display: none;">
+<p id="example_id">${example_id}</p>
+</div>
+
+<div class="col-xs-12 col-sm-12 content"><label class="group-label">Summary:</label>
+    <p class="well">${summary}<br></p>
+</div>
+
+<div class="col-xs-12 col-sm-12 content"><label class="group-label">Facts:</label>
+<p class="well">
+    <script type = "text/javascript">
+        var i;
+        var sents = ["${fact1}", "${fact2}", "${fact3}", "${fact4}", "${fact5}", "${fact6}", "${fact7}", "${fact8}",
+            "${fact9}", "${fact10}", "${fact11}"];
+
+        for (i = 0; i < parseInt(${numfact}); i++)
+        {
+            var j;
+            j = i+1;
+           document.write(j + '&nbsp;' + sents[i] + '&nbsp;&nbsp;&nbsp;&nbsp;' +
+               '<input type="radio" name="rate' + i + '" id="rate' + i + '1" value="1" required=""> ' +
+               '<label for="rate' + i + '1">Present</label> ' +
+               '<input type="radio" name="rate' + i + '" id="rate' + i + '2" value="2" required=""> ' +
+               '<label for="rate' + i + '2">Not Present</label>' + '<br>')
+        }
+    </script>
+</p>
+<hr>
+<p>  Optional Feedback: Thanks for filling out the questions above!  If something about the hit was unclear or you had a problem filling it out, please leave a comment below.</p>
+<textarea rows="2" cols="125" name="commentbox"></textarea>
+</div>
+
+<br><br>
+
+<br>
+
+<!-- <div class="col-xs-12 col-sm-12 fields"><strong style="font-size: 16px">Fluency</strong> -->
+
+<!--<hr />-->
+<!--<div class="col-xs-2 col-sm-4 fields">-->
+<!--<div class="form-group">-->
+<!--<div><b>Which question do you think is better?</b>&lt;!&ndash; Input from the Worker &ndash;&gt;</div>-->
+
+<!--<div class="btn-group-vertical" data-toggle="buttons" id="Inputs1"><label class="btn btn-default" style="font-size: 14px">-->
+<!--    <input id="Question11" name="quality1" required="" type="radio" value="1" />Question-1</label>-->
+<!--    <label class="btn btn-default" style="font-size: 14px">-->
+<!--        <input id="Question12" name="quality1" required="" type="radio" value="2" />Question-2</label>-->
+<!--    <label class="btn btn-default" style="font-size: 14px">-->
+<!--        <input id="Equal1" name="quality1" required="" type="radio" value="3" />Non-distinguishable</label>-->
+<!--</div>-->
+<!--</div>-->
+<!--</div>-->
+
+
+
+</div>
+
+
+</div>
+</section>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.0.1/jquery.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/js/bootstrap.min.js"></script><!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" /> -->
+<link crossorigin="anonymous" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" rel="stylesheet" />
+<style type="text/css">#collapseTrigger{ color:#fff; display: block; text-decoration: none; } #submitButton{ white-space: normal; } #instructionBody table{ font-size: 14px; margin-top: 10px; } #instructionBody table caption{ text-align: left; padding: 0 0 5px 0; } #Inputs{ display: block; margin-top: 10px; } .content{ margin-bottom: 15px; } .radio:first-of-type{ margin-top: -5px; }
+</style>
+<script type="text/javascript">
+
+$(".btn-default").on("click", function() {
+  var classArr = ["btn-success"];
+  $(".btn-default").removeClass(classArr.toString().replace(/,/g," "));
+  var value = $(this).find("input[name='options']").val();
+  $(this).addClass("btn-success");
+});
+</script>

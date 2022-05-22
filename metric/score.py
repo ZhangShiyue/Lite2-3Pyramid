@@ -30,7 +30,7 @@ def score(
     device = "cpu" if device == -1 else f"cuda:{device}"
 
     model = AutoModelForSequenceClassification.from_pretrained(model_type, cache_dir=cache_dir).to(device)
-    tokenizer = AutoTokenizer.from_pretrained(model_type)
+    tokenizer = AutoTokenizer.from_pretrained(model_type, cache_dir=cache_dir)
 
     # prepare data
     input_ids, token_type_ids, attention_mask, ids, wts, lls = [], [], [], [], [], []
@@ -145,11 +145,11 @@ def human_score(
 
 
 if __name__ == '__main__':
-    with open("../data/REALSumm/abs_bart_out.summary", 'r') as f:
+    with open("../data/REALSumm/summaries/abs_bart_out.summary", 'r') as f:
         summaries = [line.strip() for line in f.readlines()]
     with open("../data/REALSumm/SCUs.txt", 'r') as f:
         units = [line.strip().split('\t') for line in f.readlines()]
-    with open("../data/REALSumm/abs_bart_out.label", 'r') as f:
+    with open("../data/REALSumm/labels/abs_bart_out.label", 'r') as f:
         labels = [[int(label) for label in line.strip().split('\t')] for line in f.readlines()]
     print(score(summaries, units, labels=labels, cache_dir="train/cache"))
     """

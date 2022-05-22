@@ -49,7 +49,7 @@ def main():
                         help="The regressor used for mixing STUs and SCUs.")
     parser.add_argument("--use_coref", action="store_true",
                         help="if apply coreference resolution for STU extraction")
-    parser.add_argument("--device", type=int, default=-1,
+    parser.add_argument("--device", type=int, default=0,
                         help="The ID of the GPU to use, -1 if CPU")
     parser.add_argument("--output_file",
                         help="The output file to save the scores to")
