@@ -66,12 +66,13 @@ python Lite2-3Pyramid.py --mix_stus_and_scus --stu_percentage 50 --scus_file dat
 ```
 If you have intermediate SRL and Coreference results saved, you can use the following command to save time.
 ```
-python Lite2-3Pyramid.py --mix_stus_and_scus --stu_percentage 50 --scus_file data/REALSumm/SCUs.txt --regressor regressors/TAC08/all_xgb.json --srl_file data/REALSumm/ref_srls.pkl --coref_file data/REALSumm/ref_corefs.pkl --doc_id data/REALSumm/ids.txt --output_dir data/REALSumm --use_coref --device 0
+python Lite2-3Pyramid.py --mix_stus_and_scus --stu_percentage 50 --scus_file data/REALSumm/SCUs.txt --regressor regressors/TAC08/all_xgb.json --reference data/REALSumm/references.txt --srl_file data/REALSumm/ref_srls.pkl --coref_file data/REALSumm/ref_corefs.pkl --doc_id data/REALSumm/ids.txt --output_dir data/REALSumm --use_coref --device 0
 ```
+
 
 #### PyrXSum
 
-Similarly, run the following command to get the **Lite<sup>2</sup>Pyramid** score for abstractive T5-large summaries 
+Similar to REALSumm, run the following command to get the **Lite<sup>2</sup>Pyramid** score for abstractive T5-large summaries 
 for 100 XSum examples.
 ```
 python Lite2-3Pyramid.py --unit data/PyrXSum/SCUs.txt --summary data/PyrXSum/summaries/t5-large.summary --label data/PyrXSum/labels/t5-large.label --device 0
@@ -81,11 +82,17 @@ expected output: {'p2c': 0.354199199620129, 'l2c': 0.37358008658008657, 'p3c': 0
 When set "--unit data/PyrXSum/STUs.txt", it will give the **Lite<sup>3</sup>Pyramid** score.  
 
 
-Similarly, **To extract STUs**:
+Similar to REALSumm (except, do not use --use_coref), **To extract STUs**:
 ```
 python Lite2-3Pyramid.py --extract_stus --reference data/PyrXSum/references.txt --doc_id data/PyrXSum/ids.txt --output_dir data/PyrXSum/ --device 0
 ```
+One intermediate file (ref_srls.pkl) will also be saved under "data/PyrXSum".
 
+
+**To mix STUs and SCUs**,
+```
+python Lite2-3Pyramid.py --mix_stus_and_scus --stu_percentage 50 --scus_file data/PyrXSum/SCUs.txt --regressor regressors/TAC08/all_xgb.json --reference data/PyrXSum/references.txt --srl_file data/PyrXSum/ref_srls.pkl --doc_id data/PyrXSum/ids.txt --output_dir data/PyrXSum/ --device 0
+```
 
 ### Pretrained NLI Models
 We provide the zero-shot NLI model and 4 other NLI models 
